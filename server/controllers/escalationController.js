@@ -1,5 +1,6 @@
 import asyncHandler from 'express-async-handler';
 import Escalation from '../models/Escalation.js';
+import Notification from '../models/Notification.js';
 
 const decorateEscalation = (escalation) => {
   const plain = escalation.toObject();
@@ -32,7 +33,8 @@ export const createEscalation = asyncHandler(async (req, res) => {
   const escalation = await Escalation.create({
     ...req.body,
     tags: Array.isArray(req.body.tags) ? req.body.tags.map((tag) => tag.trim()).filter(Boolean) : [],
-    raisedBy: req.user._id
+    raisedBy: req.user._id,
+    subscribers: req.body.subscribeToIssue === false ? [] : [req.user._id]
   });
   res.status(201).json({ escalation });
 });
@@ -77,6 +79,10 @@ export const resolveEscalation = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Escalation not found' });
   }
 
+  if (!resolution.trim()) {
+    return res.status(400).json({ message: 'Resolution text is required' });
+  }
+
   escalation.status = 'resolved';
   escalation.resolution = resolution;
   escalation.resolvedBy = req.user._id;
@@ -86,6 +92,21 @@ export const resolveEscalation = asyncHandler(async (req, res) => {
   }
 
   await escalation.save();
+
+  const recipients = new Set([String(escalation.raisedBy), ...escalation.subscribers.map((subscriber) => String(subscriber))]);
+  recipients.delete(String(req.user._id));
+
+  if (recipients.size) {
+    await Notification.insertMany(
+      [...recipients].map((userId) => ({
+        userId,
+        type: 'issue_resolved',
+        message: `Your escalation "${escalation.title}" was marked resolved.`,
+        link: `/escalations/${escalation._id}`
+      }))
+    );
+  }
+
   res.json({ escalation });
 });
 
@@ -102,6 +123,20 @@ export const addComment = asyncHandler(async (req, res) => {
 
   escalation.comments.push({ user: req.user._id, text: req.body.text });
   await escalation.save();
+
+  const recipients = new Set([String(escalation.raisedBy), ...escalation.subscribers.map((subscriber) => String(subscriber))]);
+  recipients.delete(String(req.user._id));
+
+  if (recipients.size) {
+    await Notification.insertMany(
+      [...recipients].map((userId) => ({
+        userId,
+        type: 'comment_added',
+        message: `A new comment was added to "${escalation.title}".`,
+        link: `/escalations/${escalation._id}`
+      }))
+    );
+  }
 
   res.status(201).json({ escalation });
 });

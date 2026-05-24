@@ -3,15 +3,17 @@ import toast from 'react-hot-toast';
 import api from '../api/axios.js';
 import Modal from '../components/Modal.jsx';
 import IssueCard from '../components/IssueCard.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const statusOptions = ['All', 'open', 'in_progress', 'resolved'];
 const categoryOptions = ['All', 'Academics', 'Hostel', 'Fees', 'Placements', 'Tech/ERP', 'Events'];
 
 export default function EscalationsPage() {
+  const { user } = useAuth();
   const [issues, setIssues] = useState([]);
   const [selected, setSelected] = useState(null);
   const [openModal, setOpenModal] = useState(false);
-  const [formData, setFormData] = useState({ title: '', description: '', category: '', tags: '' });
+  const [formData, setFormData] = useState({ title: '', description: '', category: '', tags: '', subscribeToIssue: true });
   const [statusFilter, setStatusFilter] = useState('All');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [commentText, setCommentText] = useState('');
@@ -41,7 +43,7 @@ export default function EscalationsPage() {
       await api.post('/escalations', { ...formData, tags: formData.tags.split(',').map((tag) => tag.trim()).filter(Boolean) });
       toast.success('Issue raised');
       setOpenModal(false);
-      setFormData({ title: '', description: '', category: '', tags: '' });
+      setFormData({ title: '', description: '', category: '', tags: '', subscribeToIssue: true });
       loadIssues();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Could not create issue');
@@ -63,6 +65,10 @@ export default function EscalationsPage() {
 
   const handleResolve = async () => {
     if (!selected) return;
+    if (!resolutionText.trim()) {
+      toast.error('Resolution text is required');
+      return;
+    }
     await api.put(`/escalations/${selected._id}/resolve`, {
       resolution: resolutionText,
       comment: commentText
@@ -101,7 +107,13 @@ export default function EscalationsPage() {
 
       <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {issues.map((issue) => (
-          <IssueCard key={issue._id} issue={issue} onVote={() => handleVote(issue._id)} onOpen={() => openDetails(issue)} />
+          <IssueCard
+            key={issue._id}
+            issue={issue}
+            subscribed={issue.subscribers?.some((subscriberId) => String(subscriberId) === String(user?.id))}
+            onVote={() => handleVote(issue._id)}
+            onOpen={() => openDetails(issue)}
+          />
         ))}
       </div>
 
@@ -111,6 +123,10 @@ export default function EscalationsPage() {
           <textarea className="input min-h-32" placeholder="Description" value={formData.description} onChange={(event) => setFormData((current) => ({ ...current, description: event.target.value }))} />
           <input className="input" placeholder="Category" value={formData.category} onChange={(event) => setFormData((current) => ({ ...current, category: event.target.value }))} />
           <input className="input" placeholder="Tags comma separated" value={formData.tags} onChange={(event) => setFormData((current) => ({ ...current, tags: event.target.value }))} />
+          <label className="flex items-center gap-3 text-sm text-slate-600">
+            <input type="checkbox" checked={formData.subscribeToIssue} onChange={(event) => setFormData((current) => ({ ...current, subscribeToIssue: event.target.checked }))} />
+            Turn on notifications for this issue
+          </label>
           <button className="rounded-2xl bg-flame px-4 py-3 font-semibold text-white">Submit</button>
         </form>
       </Modal>

@@ -1,13 +1,49 @@
+import { useEffect, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
+import api from '../api/axios.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const loadNotifications = async () => {
+    try {
+      const { data } = await api.get('/notifications');
+      setNotifications(data.notifications || []);
+      setUnreadCount(data.unreadCount || 0);
+    } catch {
+      setNotifications([]);
+      setUnreadCount(0);
+    }
+  };
+
+  useEffect(() => {
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogout = async () => {
     await logout();
     navigate('/');
+  };
+
+  const openNotification = async (notification) => {
+    await api.put(`/notifications/${notification._id}/read`);
+    setShowDropdown(false);
+    if (notification.link) {
+      navigate(notification.link);
+    }
+    loadNotifications();
+  };
+
+  const markAllRead = async () => {
+    await api.put('/notifications/read-all');
+    loadNotifications();
   };
 
   return (
@@ -24,6 +60,28 @@ export default function Navbar() {
             Escalations
           </NavLink>
           {user?.role === 'admin' ? <NavLink to="/admin" className={({ isActive }) => (isActive ? 'text-flame' : 'text-slate-600')}>Admin</NavLink> : null}
+          <div className="relative">
+            <button onClick={() => setShowDropdown((value) => !value)} className="relative rounded-full border border-slate-200 bg-white px-3 py-2 text-slate-700">
+              🔔
+              {unreadCount ? <span className="absolute -right-1 -top-1 rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{unreadCount}</span> : null}
+            </button>
+            {showDropdown ? (
+              <div className="absolute right-0 top-12 w-80 rounded-3xl border border-slate-200 bg-white p-3 shadow-soft">
+                <div className="flex items-center justify-between px-2 pb-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  <span>Notifications</span>
+                  <button onClick={markAllRead} className="text-flame">Mark all read</button>
+                </div>
+                <div className="max-h-80 space-y-2 overflow-y-auto">
+                  {notifications.length ? notifications.map((notification) => (
+                    <button key={notification._id} onClick={() => openNotification(notification)} className={`w-full rounded-2xl border p-3 text-left text-sm ${notification.read ? 'border-slate-100 bg-slate-50 text-slate-600' : 'border-cyan-100 bg-cyan-50 text-slate-800'}`}>
+                      <p className="font-medium">{notification.message}</p>
+                      <p className="mt-1 text-xs text-slate-500">{new Date(notification.createdAt).toLocaleString()}</p>
+                    </button>
+                  )) : <p className="px-2 py-4 text-sm text-slate-500">No notifications yet.</p>}
+                </div>
+              </div>
+            ) : null}
+          </div>
           <button onClick={handleLogout} className="rounded-full bg-ink px-4 py-2 text-white">
             Logout
           </button>

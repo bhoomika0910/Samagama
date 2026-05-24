@@ -10,6 +10,13 @@ A MERN-stack student help portal with cookie-based JWT auth, FAQ search, a keywo
 - Auth: JWT in httpOnly cookies + bcrypt
 - Notifications: react-hot-toast
 
+## Auth flow
+
+- Registration uses name, email, roll number, branch, and year only.
+- The server emails a temporary password after signup.
+- First login forces a password change.
+- Forgot password sends a reset link by email.
+
 ## Run locally
 
 1. Copy `.env.example` to `.env` in the repo root and fill in your MongoDB, JWT, and email values.
@@ -29,6 +36,14 @@ npm run dev --workspace client
 ```
 
 The client runs on `http://localhost:5173` and the server runs on `http://localhost:5000`.
+
+## Seed FAQs
+
+When the FAQ data is ready, put the FAQ objects into `server/seed/faqs.js` and run:
+
+```bash
+npm run seed:faqs --workspace server
+```
 
 ## Git push flow
 

@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "seed:faqs": "node seed/faqs.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

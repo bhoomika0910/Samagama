@@ -1,5 +1,6 @@
 import asyncHandler from 'express-async-handler';
 import FAQ from '../models/FAQ.js';
+import ChatbotFeedback from '../models/ChatbotFeedback.js';
 
 const stopwords = new Set(['is', 'the', 'a', 'an', 'for', 'how', 'what', 'where', 'when', 'why', 'to', 'of', 'in', 'on', 'and', 'i', 'we', 'you']);
 
@@ -15,7 +16,7 @@ export const queryChatbot = asyncHandler(async (req, res) => {
   const keywords = tokenize(message);
 
   if (!keywords.length) {
-    return res.json({ found: false, faqs: [] });
+    return res.json({ found: false, message: "I couldn't find an answer. Want to raise an escalation?", faqs: [] });
   }
 
   const regexes = keywords.map((keyword) => new RegExp(keyword, 'i'));
@@ -38,8 +39,25 @@ export const queryChatbot = asyncHandler(async (req, res) => {
     .slice(0, 3);
 
   if (!scored.length) {
-    return res.json({ found: false, faqs: [] });
+    return res.json({ found: false, message: "I couldn't find an answer. Want to raise an escalation?", faqs: [] });
   }
 
   res.json({ found: true, faqs: scored });
+});
+
+export const saveChatbotFeedback = asyncHandler(async (req, res) => {
+  const { question, response, helpful } = req.body;
+
+  if (!question || !response || typeof helpful !== 'boolean') {
+    return res.status(400).json({ message: 'Missing chatbot feedback fields' });
+  }
+
+  const feedback = await ChatbotFeedback.create({
+    userId: req.user?._id,
+    question,
+    response,
+    helpful
+  });
+
+  res.status(201).json({ feedback });
 });

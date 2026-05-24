@@ -9,6 +9,7 @@ const escalationSchema = new mongoose.Schema(
     raisedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     status: { type: String, enum: ['open', 'in_progress', 'resolved'], default: 'open' },
     votes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    subscribers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     resolvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     resolution: { type: String, trim: true },
     comments: [

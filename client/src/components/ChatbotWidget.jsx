@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/axios.js';
 
@@ -11,6 +11,12 @@ export default function ChatbotWidget() {
   ]);
 
   const bubbleClass = useMemo(() => 'rounded-2xl px-4 py-3 text-sm leading-6', []);
+
+  useEffect(() => {
+    const openHandler = () => setOpen(true);
+    window.addEventListener('yaksha-open', openHandler);
+    return () => window.removeEventListener('yaksha-open', openHandler);
+  }, []);
 
   const sendMessage = async () => {
     if (!message.trim()) return;
@@ -26,8 +32,10 @@ export default function ChatbotWidget() {
           ...current,
           {
             role: 'bot',
-            text: 'No answer found — want to raise an escalation?',
-            action: true
+            text: data.message || 'No answer found — want to raise an escalation?',
+            action: true,
+            query: message,
+            response: data.message || 'No answer found — want to raise an escalation?'
           }
         ]);
       } else {
@@ -37,12 +45,29 @@ export default function ChatbotWidget() {
             role: 'bot',
             text: data.faqs
               .map((faq) => `${faq.question}\n${faq.answer}`)
+              .join('\n\n'),
+            query: message,
+            response: data.faqs
+              .map((faq) => `${faq.question}\n${faq.answer}`)
               .join('\n\n')
           }
         ]);
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const sendFeedback = async (item, helpful) => {
+    try {
+      await api.post('/chatbot/feedback', {
+        question: item.query || item.text,
+        response: item.response || item.text,
+        helpful
+      });
+      setHistory((current) => current.map((entry) => (entry === item ? { ...entry, feedbackGiven: true } : entry)));
+    } catch {
+      // ignore feedback errors for now
     }
   };
 
@@ -65,6 +90,13 @@ export default function ChatbotWidget() {
                   <Link to="/escalations" onClick={() => setOpen(false)} className="mt-3 inline-flex rounded-full bg-ink px-4 py-2 text-xs font-semibold text-white">
                     Go to Escalations
                   </Link>
+                ) : null}
+                {item.role === 'bot' ? (
+                  <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
+                    <span>Was this helpful?</span>
+                    <button type="button" onClick={() => sendFeedback(item, true)} className="rounded-full bg-emerald-100 px-3 py-1 font-semibold text-emerald-700">👍</button>
+                    <button type="button" onClick={() => sendFeedback(item, false)} className="rounded-full bg-rose-100 px-3 py-1 font-semibold text-rose-700">👎</button>
+                  </div>
                 ) : null}
               </div>
             ))}
