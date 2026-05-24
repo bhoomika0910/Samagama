@@ -6,7 +6,8 @@
     "dev": "nodemon server.js",
     "start": "node server.js",
     "seed:faqs": "node seed/faqs.js",
-    "seed:faqs:dry": "node seed/faqs.js --dry-run"
+    "seed:faqs:dry": "node seed/faqs.js --dry-run",
+    "seed:faqs:json": "node seed/faqs.js --from-json"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

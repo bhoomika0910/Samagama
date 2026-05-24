@@ -3,8 +3,8 @@ import * as cheerio from 'cheerio';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import mongoose from 'mongoose';
 import FAQ from '../models/FAQ.js';
-import { connectDB } from '../config/db.js';
 
 dotenv.config();
 
@@ -101,8 +101,24 @@ const parseFaqFromPage = async () => {
   return parsedFaqs;
 };
 
+const readFaqsFromJson = () => {
+  const inputPath = path.join(__dirname, 'faqs.generated.json');
+  if (!fs.existsSync(inputPath)) {
+    throw new Error(`Missing generated FAQ file at ${inputPath}. Run dry seed first.`);
+  }
+
+  const content = fs.readFileSync(inputPath, 'utf-8');
+  const parsed = JSON.parse(content);
+  if (!Array.isArray(parsed)) {
+    throw new Error('Generated FAQ JSON must be an array.');
+  }
+
+  return parsed;
+};
+
 const seedFaqs = async () => {
-  const faqs = await parseFaqFromPage();
+  const seedFromJson = process.argv.includes('--from-json');
+  const faqs = seedFromJson ? readFaqsFromJson() : await parseFaqFromPage();
 
   const dryRun = process.argv.includes('--dry-run') || String(process.env.SEED_DRY_RUN).toLowerCase() === 'true';
   if (dryRun) {
@@ -112,7 +128,12 @@ const seedFaqs = async () => {
     process.exit(0);
   }
 
-  await connectDB();
+  const mongoUri = process.env.MONGO_URI;
+  if (!mongoUri) {
+    throw new Error('MONGO_URI is required for live FAQ seeding. Use --dry-run to generate JSON without DB.');
+  }
+
+  await mongoose.connect(mongoUri);
   await FAQ.deleteMany();
 
   if (faqs.length) {
@@ -120,6 +141,7 @@ const seedFaqs = async () => {
   }
 
   console.log(`Seeded ${faqs.length} FAQ records.`);
+  await mongoose.disconnect();
   process.exit(0);
 };
 
