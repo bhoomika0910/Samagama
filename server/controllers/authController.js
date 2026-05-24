@@ -15,16 +15,10 @@ const publicUser = (user) => ({
   mustChangePassword: user.mustChangePassword
 });
 
-const isCollegeEmail = (email) => /@.+\.(edu|in|ac\.in|college\.in)$/i.test(email) || email.endsWith('@samagama.in');
-
 const generateTempPassword = () => `${Math.random().toString(36).slice(-8)}Aa1!`;
 
 export const register = asyncHandler(async (req, res) => {
   const { name, email, rollNumber, branch, year, role } = req.body;
-
-  if (!isCollegeEmail(email)) {
-    return res.status(400).json({ message: 'Please use your college email address' });
-  }
 
   const existing = await User.findOne({ $or: [{ email }, { rollNumber }] });
   if (existing) {

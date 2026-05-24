@@ -21,7 +21,7 @@ export default function LoginPage() {
   const [registerForm, setRegisterForm] = useState(initialRegisterForm);
 
   const versionTag = useMemo(() => `v1.0.0 · ${new Date().toISOString().slice(0, 10)}`, []);
-  const collegeEmailPattern = /@(?:[a-z0-9-]+\.)?(?:edu|ac\.in|in|college\.in|samagama\.in)$/i;
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   const openChat = () => window.dispatchEvent(new CustomEvent('yaksha-open'));
 
@@ -52,8 +52,8 @@ export default function LoginPage() {
       return;
     }
 
-    if (!collegeEmailPattern.test(registerForm.email)) {
-      toast.error('Use your college email address');
+    if (!emailPattern.test(registerForm.email)) {
+      toast.error('Enter a valid email address');
       return;
     }
 
@@ -140,7 +140,7 @@ export default function LoginPage() {
               <form onSubmit={handleRegister} className="mt-6 space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <input value={registerForm.name} onChange={(event) => setRegisterForm((current) => ({ ...current, name: event.target.value }))} placeholder="Full name" className="rounded-2xl border border-white/10 bg-[#151515] px-4 py-3 text-white outline-none placeholder:text-white/35 focus:border-cyan-400" />
-                  <input value={registerForm.email} onChange={(event) => setRegisterForm((current) => ({ ...current, email: event.target.value }))} placeholder="College email" className="rounded-2xl border border-white/10 bg-[#151515] px-4 py-3 text-white outline-none placeholder:text-white/35 focus:border-cyan-400" />
+                  <input value={registerForm.email} onChange={(event) => setRegisterForm((current) => ({ ...current, email: event.target.value }))} placeholder="Email address" className="rounded-2xl border border-white/10 bg-[#151515] px-4 py-3 text-white outline-none placeholder:text-white/35 focus:border-cyan-400" />
                   <input value={registerForm.rollNumber} onChange={(event) => setRegisterForm((current) => ({ ...current, rollNumber: event.target.value }))} placeholder="Roll number" className="rounded-2xl border border-white/10 bg-[#151515] px-4 py-3 text-white outline-none placeholder:text-white/35 focus:border-cyan-400" />
                   <input value={registerForm.branch} onChange={(event) => setRegisterForm((current) => ({ ...current, branch: event.target.value }))} placeholder="Branch" className="rounded-2xl border border-white/10 bg-[#151515] px-4 py-3 text-white outline-none placeholder:text-white/35 focus:border-cyan-400" />
                 </div>
