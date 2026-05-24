@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api/axios.js';
 
 export default function ChatbotWidget() {
@@ -21,7 +22,14 @@ export default function ChatbotWidget() {
     try {
       const { data } = await api.post('/chatbot/query', { message });
       if (!data.found) {
-        setHistory((current) => [...current, { role: 'bot', text: 'No answer found — want to raise an escalation?' }]);
+        setHistory((current) => [
+          ...current,
+          {
+            role: 'bot',
+            text: 'No answer found — want to raise an escalation?',
+            action: true
+          }
+        ]);
       } else {
         setHistory((current) => [
           ...current,
@@ -52,10 +60,21 @@ export default function ChatbotWidget() {
           <div className="max-h-80 space-y-3 overflow-y-auto p-4">
             {history.map((item, index) => (
               <div key={`${item.role}-${index}`} className={`whitespace-pre-line ${bubbleClass} ${item.role === 'user' ? 'ml-auto max-w-[85%] bg-flame text-white' : 'mr-auto max-w-[90%] bg-slate-100 text-slate-700'}`}>
-                {item.text}
+                <p>{item.text}</p>
+                {item.action ? (
+                  <Link to="/escalations" onClick={() => setOpen(false)} className="mt-3 inline-flex rounded-full bg-ink px-4 py-2 text-xs font-semibold text-white">
+                    Go to Escalations
+                  </Link>
+                ) : null}
               </div>
             ))}
-            {loading ? <div className="mr-auto w-fit rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-500">Typing...</div> : null}
+            {loading ? (
+              <div className="mr-auto flex w-fit items-center gap-1 rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-500">
+                <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.2s]"></span>
+                <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.1s]"></span>
+                <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400"></span>
+              </div>
+            ) : null}
           </div>
           <div className="border-t p-3">
             <div className="flex gap-2">
