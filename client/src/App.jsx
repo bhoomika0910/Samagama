@@ -7,9 +7,11 @@ import LoginPage from './pages/LoginPage.jsx';
 import HomePage from './pages/HomePage.jsx';
 import EscalationsPage from './pages/EscalationsPage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
+import PasswordResetPage from './pages/PasswordResetPage.jsx';
+import SetPasswordPage from './pages/SetPasswordPage.jsx';
 
 export default function App() {
-  const { user, loading } = useAuth();
+  const { user, loading, needsPasswordChange } = useAuth();
 
   if (loading) {
     return <div className="min-h-screen grid place-items-center text-slate-600">Loading Samagama...</div>;
@@ -17,14 +19,23 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_#fff7ed,_#eff6ff_40%,_#f8fafc_80%)] text-slate-900">
-      {user ? <Navbar /> : null}
+      {user && !needsPasswordChange ? <Navbar /> : null}
       <Routes>
         <Route path="/" element={!user ? <LoginPage /> : <Navigate to="/home" replace />} />
+        <Route path="/reset-password" element={<PasswordResetPage />} />
+        <Route
+          path="/set-password"
+          element={
+            <ProtectedRoute>
+              {needsPasswordChange ? <SetPasswordPage /> : <Navigate to="/home" replace />}
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/home"
           element={
             <ProtectedRoute>
-              <HomePage />
+              {needsPasswordChange ? <Navigate to="/set-password" replace /> : <HomePage />}
             </ProtectedRoute>
           }
         />
@@ -32,7 +43,7 @@ export default function App() {
           path="/escalations"
           element={
             <ProtectedRoute>
-              <EscalationsPage />
+              {needsPasswordChange ? <Navigate to="/set-password" replace /> : <EscalationsPage />}
             </ProtectedRoute>
           }
         />
@@ -40,13 +51,13 @@ export default function App() {
           path="/admin"
           element={
             <ProtectedRoute adminOnly>
-              <AdminPage />
+              {needsPasswordChange ? <Navigate to="/set-password" replace /> : <AdminPage />}
             </ProtectedRoute>
           }
         />
         <Route path="*" element={<Navigate to={user ? '/home' : '/'} replace />} />
       </Routes>
-      {user ? <ChatbotWidget /> : null}
+      <ChatbotWidget />
     </div>
   );
 }

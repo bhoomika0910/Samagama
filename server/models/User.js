@@ -9,8 +9,9 @@ const userSchema = new mongoose.Schema(
     year: { type: String, required: true, trim: true },
     passwordHash: { type: String, required: true },
     role: { type: String, enum: ['student', 'admin'], default: 'student' },
-    resetOtpHash: { type: String },
-    resetOtpExpires: { type: Date }
+    mustChangePassword: { type: Boolean, default: false },
+    resetTokenHash: { type: String },
+    resetTokenExpires: { type: Date }
   },
   { timestamps: true }
 );

@@ -12,6 +12,7 @@ import faqRoutes from './routes/faqRoutes.js';
 import chatbotRoutes from './routes/chatbotRoutes.js';
 import escalationRoutes from './routes/escalationRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,6 +38,7 @@ app.use('/api/faqs', faqRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/escalations', escalationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

@@ -11,7 +11,7 @@ export const authMiddleware = asyncHandler(async (req, res, next) => {
   }
 
   const decoded = jwt.verify(token, process.env.JWT_SECRET);
-  const user = await User.findById(decoded.userId).select('-passwordHash -resetOtpHash -resetOtpExpires');
+  const user = await User.findById(decoded.userId).select('-passwordHash -resetTokenHash -resetTokenExpires');
 
   if (!user) {
     res.status(401);
