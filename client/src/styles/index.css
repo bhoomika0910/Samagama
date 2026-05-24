@@ -3,21 +3,78 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 @layer components {
   .input {
     @apply w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-flame focus:ring-2 focus:ring-flame/20;
   }
+
+  .auth-input {
+    @apply w-full rounded-lg border border-[#2a2a2a] bg-[#0d0d0d] px-[14px] py-[11px] text-[15px] text-[#f0f0f0] outline-none transition;
+  }
+
+  .auth-input::placeholder {
+    color: #444;
+  }
+
+  .auth-input:focus {
+    border-color: #444;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
+  }
+
+  .auth-input-error {
+    border-color: #7f1d1d;
+  }
+
+  .auth-input-error:focus {
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+  }
+
+  .auth-btn {
+    @apply w-full rounded-lg border border-[#333] bg-[#1e1e1e] px-4 py-[11px] text-[15px] font-medium tracking-[0.01em] text-[#f0f0f0] transition;
+  }
+
+  .auth-btn:hover {
+    background: #2a2a2a;
+    border-color: #444;
+  }
+
+  .auth-btn:active {
+    background: #111;
+    transform: scale(0.99);
+  }
+
+  .auth-btn:disabled {
+    opacity: 0.75;
+    cursor: not-allowed;
+  }
+
+  .auth-secondary-btn {
+    @apply w-full rounded-lg border border-[#2a2a2a] bg-transparent px-4 py-[11px] text-[15px] font-medium text-[#888] transition;
+  }
+
+  .auth-secondary-btn:hover {
+    border-color: #444;
+    color: #ccc;
+  }
+
+  .spinner {
+    @apply inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent;
+  }
 }
 
 body {
   margin: 0;
   font-family: Inter, system-ui, sans-serif;
-  background: #f8fafc;
+  background: #0d0d0d;
 }
 
 button {
   cursor: pointer;
+}
+
+.mono {
+  font-family: 'JetBrains Mono', monospace;
 }

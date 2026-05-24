@@ -9,7 +9,10 @@ const userSchema = new mongoose.Schema(
     year: { type: String, required: true, trim: true },
     passwordHash: { type: String, required: true },
     role: { type: String, enum: ['student', 'admin'], default: 'student' },
-    mustChangePassword: { type: Boolean, default: false },
+    isFirstLogin: { type: Boolean, default: true },
+    resetPasswordToken: { type: String },
+    resetPasswordExpire: { type: Date },
+    mustChangePassword: { type: Boolean, default: undefined },
     resetTokenHash: { type: String },
     resetTokenExpires: { type: Date }
   },

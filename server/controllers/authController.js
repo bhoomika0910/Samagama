@@ -1,5 +1,6 @@
 import asyncHandler from 'express-async-handler';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import User from '../models/User.js';
 import { cookieOptions, createRandomToken, createToken, hashToken } from '../utils/tokenUtils.js';
 import { sendResetLinkEmail, sendWelcomeEmail } from '../utils/emailUtils.js';
@@ -12,46 +13,57 @@ const publicUser = (user) => ({
   branch: user.branch,
   year: user.year,
   role: user.role,
-  mustChangePassword: user.mustChangePassword
+  isFirstLogin: Boolean(user.isFirstLogin ?? user.mustChangePassword)
 });
 
-const generateTempPassword = () => `${Math.random().toString(36).slice(-8)}Aa1!`;
+const generateTempPassword = () => crypto.randomBytes(8).toString('base64').slice(0, 10);
+
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const register = asyncHandler(async (req, res) => {
   const { name, email, rollNumber, branch, year, role } = req.body;
 
-  const existing = await User.findOne({ $or: [{ email }, { rollNumber }] });
+  if (!name || !email || !rollNumber || !branch || !year) {
+    return res.status(400).json({ message: 'All registration fields are required' });
+  }
+
+  if (!emailPattern.test(String(email).trim())) {
+    return res.status(400).json({ message: 'Please enter a valid email address' });
+  }
+
+  const normalizedEmail = String(email).toLowerCase().trim();
+  const existing = await User.findOne({ $or: [{ email: normalizedEmail }, { rollNumber }] });
   if (existing) {
     return res.status(400).json({ message: 'Email or roll number already exists' });
   }
 
   const tempPassword = generateTempPassword();
-  const passwordHash = await bcrypt.hash(tempPassword, 10);
+  const passwordHash = await bcrypt.hash(tempPassword, 12);
   const user = await User.create({
     name,
-    email,
+    email: normalizedEmail,
     rollNumber,
     branch,
     year,
     passwordHash,
-    mustChangePassword: true,
+    isFirstLogin: true,
     role: role === 'admin' ? 'admin' : 'student'
   });
 
   await sendWelcomeEmail({ to: user.email, name: user.name, tempPassword });
-  res.status(201).json({ message: 'Registration complete. Check your email for a temporary password.', user: publicUser(user) });
+  res.status(201).json({ message: 'Check your email for login credentials' });
 });
 
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
-  const user = await User.findOne({ email });
+  const user = await User.findOne({ email: String(email).toLowerCase().trim() });
 
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     return res.status(401).json({ message: 'Invalid email or password' });
   }
 
   res.cookie('token', createToken(user._id), cookieOptions());
-  res.json({ user: publicUser(user), needsPasswordChange: Boolean(user.mustChangePassword) });
+  res.json({ user: publicUser(user) });
 });
 
 export const logout = asyncHandler(async (req, res) => {
@@ -65,48 +77,60 @@ export const getMe = asyncHandler(async (req, res) => {
 
 export const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
-  const user = await User.findOne({ email });
+  const user = await User.findOne({ email: String(email).toLowerCase().trim() });
 
-  if (!user) {
-    return res.status(404).json({ message: 'User not found' });
+  if (user) {
+    const resetToken = createRandomToken();
+    user.resetPasswordToken = hashToken(resetToken);
+    user.resetPasswordExpire = new Date(Date.now() + 60 * 60 * 1000);
+    await user.save();
+
+    const resetLink = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+    await sendResetLinkEmail({ to: user.email, name: user.name, link: resetLink });
   }
 
-  const resetToken = createRandomToken();
-  user.resetTokenHash = hashToken(resetToken);
-  user.resetTokenExpires = new Date(Date.now() + 30 * 60 * 1000);
-  await user.save();
+  res.json({ message: "If that email is registered, you'll receive a link shortly." });
+});
 
-  const resetLink = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}&email=${encodeURIComponent(user.email)}`;
-  await sendResetLinkEmail({ to: user.email, name: user.name, link: resetLink });
-  res.json({ message: 'Password reset link sent to your email' });
+export const validateResetToken = asyncHandler(async (req, res) => {
+  const tokenHash = hashToken(req.params.token);
+  const user = await User.findOne({
+    resetPasswordToken: tokenHash,
+    resetPasswordExpire: { $gt: new Date() }
+  });
+
+  if (!user) {
+    return res.status(400).json({ valid: false, message: 'This link has expired or is invalid.' });
+  }
+
+  res.json({ valid: true });
 });
 
 export const resetPassword = asyncHandler(async (req, res) => {
-  const { email, token, password } = req.body;
-  const user = await User.findOne({ email });
+  const { token, password } = req.body;
+  const tokenHash = hashToken(token);
+  const user = await User.findOne({
+    resetPasswordToken: tokenHash,
+    resetPasswordExpire: { $gt: new Date() }
+  });
 
-  if (!user || !user.resetTokenHash || !user.resetTokenExpires) {
-    return res.status(400).json({ message: 'Invalid reset request' });
+  if (!user) {
+    return res.status(400).json({ message: 'This link has expired or is invalid. Request a new one.' });
   }
 
-  if (user.resetTokenExpires < new Date()) {
-    return res.status(400).json({ message: 'Reset link has expired' });
-  }
-
-  if (hashToken(token) !== user.resetTokenHash) {
-    return res.status(400).json({ message: 'Invalid reset token' });
-  }
-
-  user.passwordHash = await bcrypt.hash(password, 10);
+  user.passwordHash = await bcrypt.hash(password, 12);
+  user.isFirstLogin = false;
   user.mustChangePassword = false;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpire = undefined;
   user.resetTokenHash = undefined;
   user.resetTokenExpires = undefined;
   await user.save();
 
-  res.json({ message: 'Password reset successful' });
+  res.json({ message: 'Password updated' });
 });
 
-export const changePassword = asyncHandler(async (req, res) => {
+export const setPassword = asyncHandler(async (req, res) => {
   const { password } = req.body;
 
   if (!password || password.length < 6) {
@@ -118,7 +142,8 @@ export const changePassword = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'User not found' });
   }
 
-  user.passwordHash = await bcrypt.hash(password, 10);
+  user.passwordHash = await bcrypt.hash(password, 12);
+  user.isFirstLogin = false;
   user.mustChangePassword = false;
   await user.save();
 

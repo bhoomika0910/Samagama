@@ -9,7 +9,7 @@ export const hashToken = (token) => crypto.createHash('sha256').update(token).di
 
 export const cookieOptions = () => ({
   httpOnly: true,
-  sameSite: 'lax',
+  sameSite: 'strict',
   secure: process.env.NODE_ENV === 'production',
   maxAge: 7 * 24 * 60 * 60 * 1000
 });

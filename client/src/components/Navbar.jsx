@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import api from '../api/axios.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -10,6 +11,7 @@ export default function Navbar() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
   const [unreadOnly, setUnreadOnly] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   const loadNotifications = async (filterUnread = unreadOnly) => {
     try {
@@ -32,6 +34,7 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     await logout();
+    toast.success('Signed out successfully');
     navigate('/');
   };
 
@@ -88,9 +91,24 @@ export default function Navbar() {
               </div>
             ) : null}
           </div>
-          <button onClick={handleLogout} className="rounded-full bg-ink px-4 py-2 text-white">
-            Logout
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowProfile((value) => !value)}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white"
+            >
+              {(user?.name || 'U').charAt(0).toUpperCase()}
+            </button>
+            {showProfile ? (
+              <div className="absolute right-0 top-12 w-64 rounded-2xl border border-slate-200 bg-white p-3 text-sm shadow-soft">
+                <p className="font-semibold text-slate-800">Signed in as {user?.name}</p>
+                <p className="mt-1 text-xs text-slate-500">{user?.email}</p>
+                <div className="my-3 h-px bg-slate-200" />
+                <button onClick={handleLogout} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-left font-medium text-slate-700 hover:bg-slate-50">
+                  Sign out
+                </button>
+              </div>
+            ) : null}
+          </div>
         </nav>
       </div>
     </header>

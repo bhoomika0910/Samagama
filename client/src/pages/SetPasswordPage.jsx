@@ -1,19 +1,23 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import AuthCard from '../components/auth/AuthCard.jsx';
+import PasswordStrengthPanel, { getPasswordStrength } from '../components/auth/PasswordStrengthPanel.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 export default function SetPasswordPage() {
-  const { changePassword } = useAuth();
+  const { setPassword } = useAuth();
   const navigate = useNavigate();
-  const [password, setPassword] = useState('');
+  const [password, setPasswordInput] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const strength = getPasswordStrength(password);
 
-    if (password.length < 6) {
-      toast.error('Password must be at least 6 characters long');
+    if (password.length < 8 || strength.label === 'Weak') {
+      toast.error('Please choose a stronger password');
       return;
     }
 
@@ -22,27 +26,41 @@ export default function SetPasswordPage() {
       return;
     }
 
+    setLoading(true);
     try {
-      await changePassword({ password });
+      await setPassword({ password });
       toast.success('Password updated');
       navigate('/home');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Could not update password');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a] px-4 py-10 text-white grid place-items-center">
-      <div className="w-full max-w-lg rounded-[1.75rem] border border-white/10 bg-[#111] p-6 shadow-[0_0_60px_rgba(0,0,0,0.35)]">
-        <p className="text-xs uppercase tracking-[0.35em] text-cyan-200/80">samagama://first-login</p>
-        <h1 className="mt-4 text-3xl font-black">Change your password</h1>
-        <p className="mt-2 text-sm text-white/60">This is required the first time you sign in.</p>
+    <main className="grid min-h-screen place-items-center bg-[#0d0d0d] px-4 py-8 text-[#f0f0f0]">
+      <AuthCard uri="appname://set-password">
+        <h1 className="text-[22px] font-semibold">Set your password</h1>
+        <p className="mt-2 text-sm text-[#888]">Choose a strong password to secure your account.</p>
+
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="New password" className="w-full rounded-2xl border border-white/10 bg-[#151515] px-4 py-3 text-white outline-none placeholder:text-white/35" />
-          <input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Confirm password" className="w-full rounded-2xl border border-white/10 bg-[#151515] px-4 py-3 text-white outline-none placeholder:text-white/35" />
-          <button className="w-full rounded-2xl bg-white/10 px-4 py-3 font-semibold text-white">Save new password</button>
+          <div>
+            <label className="mb-2 block text-xs uppercase tracking-[0.05em] text-[#888]">New Password</label>
+            <input type="password" value={password} onChange={(event) => setPasswordInput(event.target.value)} className="auth-input" />
+            <PasswordStrengthPanel password={password} />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-xs uppercase tracking-[0.05em] text-[#888]">Confirm Password</label>
+            <input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="auth-input" />
+          </div>
+
+          <button disabled={loading} className="auth-btn">
+            {loading ? <span className="inline-flex items-center gap-2"><span className="spinner" /> Saving...</span> : 'Set password & continue →'}
+          </button>
         </form>
-      </div>
+      </AuthCard>
     </main>
   );
 }
