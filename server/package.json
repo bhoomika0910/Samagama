@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "seed:faqs": "node seed/faqs.js"
+    "seed:faqs": "node seed/faqs.js",
+    "seed:faqs:dry": "node seed/faqs.js --dry-run"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

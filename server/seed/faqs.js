@@ -1,9 +1,15 @@
 import dotenv from 'dotenv';
 import * as cheerio from 'cheerio';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import FAQ from '../models/FAQ.js';
 import { connectDB } from '../config/db.js';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const FAQ_URL = 'https://samagama.in/internship/faq';
 
@@ -96,10 +102,18 @@ const parseFaqFromPage = async () => {
 };
 
 const seedFaqs = async () => {
+  const faqs = await parseFaqFromPage();
+
+  const dryRun = process.argv.includes('--dry-run') || String(process.env.SEED_DRY_RUN).toLowerCase() === 'true';
+  if (dryRun) {
+    const outputPath = path.join(__dirname, 'faqs.generated.json');
+    fs.writeFileSync(outputPath, JSON.stringify(faqs, null, 2));
+    console.log(`Dry run complete. Parsed ${faqs.length} FAQs to ${outputPath}`);
+    process.exit(0);
+  }
+
   await connectDB();
   await FAQ.deleteMany();
-
-  const faqs = await parseFaqFromPage();
 
   if (faqs.length) {
     await FAQ.insertMany(faqs);
