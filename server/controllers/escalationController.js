@@ -1,6 +1,15 @@
 import asyncHandler from 'express-async-handler';
 import Escalation from '../models/Escalation.js';
 
+const decorateEscalation = (escalation) => {
+  const plain = escalation.toObject();
+  return {
+    ...plain,
+    voteCount: plain.votes?.length || 0,
+    commentCount: plain.comments?.length || 0
+  };
+};
+
 export const getEscalations = asyncHandler(async (req, res) => {
   const { status, category } = req.query;
   const query = {};
@@ -10,13 +19,21 @@ export const getEscalations = asyncHandler(async (req, res) => {
 
   const escalations = await Escalation.find(query)
     .populate('raisedBy', 'name rollNumber branch year role')
-    .sort({ votes: -1, createdAt: -1 });
+    .sort({ createdAt: -1 });
 
-  res.json({ escalations });
+  const rankedEscalations = escalations
+    .map(decorateEscalation)
+    .sort((left, right) => right.voteCount - left.voteCount || new Date(right.createdAt) - new Date(left.createdAt));
+
+  res.json({ escalations: rankedEscalations });
 });
 
 export const createEscalation = asyncHandler(async (req, res) => {
-  const escalation = await Escalation.create({ ...req.body, raisedBy: req.user._id });
+  const escalation = await Escalation.create({
+    ...req.body,
+    tags: Array.isArray(req.body.tags) ? req.body.tags.map((tag) => tag.trim()).filter(Boolean) : [],
+    raisedBy: req.user._id
+  });
   res.status(201).json({ escalation });
 });
 
@@ -77,6 +94,10 @@ export const addComment = asyncHandler(async (req, res) => {
 
   if (!escalation) {
     return res.status(404).json({ message: 'Escalation not found' });
+  }
+
+  if (!req.body.text?.trim()) {
+    return res.status(400).json({ message: 'Comment cannot be empty' });
   }
 
   escalation.comments.push({ user: req.user._id, text: req.body.text });
