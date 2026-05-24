@@ -1,23 +1,105 @@
 import dotenv from 'dotenv';
+import * as cheerio from 'cheerio';
 import FAQ from '../models/FAQ.js';
 import { connectDB } from '../config/db.js';
 
 dotenv.config();
 
-const faqs = [
-  // Add FAQ objects here before running: node seed/faqs.js
-  // Example:
-  // {
-  //   question: 'How do I reset my password?',
-  //   answer: 'Use the reset-password link on the login page.',
-  //   category: 'Tech/ERP',
-  //   tags: ['password', 'login', 'reset']
-  // }
+const FAQ_URL = 'https://samagama.in/internship/faq';
+
+const stopwords = new Set([
+  'the', 'is', 'a', 'an', 'and', 'or', 'to', 'of', 'in', 'for', 'on', 'with', 'that', 'this',
+  'it', 'are', 'be', 'as', 'at', 'from', 'by', 'can', 'do', 'i', 'my', 'you', 'your'
+]);
+
+const categoryMap = [
+  { test: /about|general|overview/i, value: 'general' },
+  { test: /timing|dates|start|deadline/i, value: 'timing' },
+  { test: /noc/i, value: 'noc' },
+  { test: /selection|offer|interview|vins|result/i, value: 'selection' },
+  { test: /work|mentorship|project|conduct/i, value: 'work' },
+  { test: /certificate/i, value: 'certificate' },
+  { test: /rosetta|journal/i, value: 'rosetta' },
+  { test: /vibe|phase|yaksha chat/i, value: 'vibe' },
+  { test: /team/i, value: 'team' }
 ];
+
+const normalizeWhitespace = (value = '') => value.replace(/\s+/g, ' ').trim();
+
+const toCategory = (sectionTitle = '') => {
+  const match = categoryMap.find((entry) => entry.test.test(sectionTitle));
+  return match ? match.value : 'general';
+};
+
+const extractTags = (question, answer, sectionTitle) => {
+  const text = `${sectionTitle} ${question} ${answer}`.toLowerCase();
+  const tokens = text
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length > 2 && !stopwords.has(token));
+
+  const unique = [...new Set(tokens)];
+  return unique.slice(0, 10);
+};
+
+const parseFaqFromPage = async () => {
+  const response = await fetch(FAQ_URL);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch FAQ page: ${response.status}`);
+  }
+
+  const html = await response.text();
+  const $ = cheerio.load(html);
+  const parsedFaqs = [];
+
+  $('h2[id^="s-"]').each((_, sectionHeading) => {
+    const headingText = normalizeWhitespace($(sectionHeading).text());
+    const sectionMatch = headingText.match(/^(\d+)\.?\s*(.*)$/);
+    if (!sectionMatch) return;
+
+    const sectionNumber = Number(sectionMatch[1]);
+    const sectionTitle = sectionMatch[2] || headingText;
+    const category = toCategory(sectionTitle);
+
+    let current = $(sectionHeading).next();
+    while (current.length && current[0].tagName !== 'h2') {
+      const id = current.attr('id') || '';
+      if (id.startsWith('q-')) {
+        const question = normalizeWhitespace(current.text());
+        let answerNode = current.next();
+        let answer = '';
+
+        while (answerNode.length && answerNode[0].tagName !== 'h3' && answerNode[0].tagName !== 'h2') {
+          const text = normalizeWhitespace(answerNode.text());
+          if (text) {
+            answer = `${answer} ${text}`.trim();
+          }
+          answerNode = answerNode.next();
+        }
+
+        const subsection = id.replace('q-', '').replace(/-/g, '.');
+        parsedFaqs.push({
+          section: sectionNumber,
+          sectionTitle,
+          subsection,
+          question,
+          answer: answer || 'Please refer to the official FAQ section for complete details.',
+          tags: extractTags(question, answer, sectionTitle),
+          category
+        });
+      }
+
+      current = current.next();
+    }
+  });
+
+  return parsedFaqs;
+};
 
 const seedFaqs = async () => {
   await connectDB();
   await FAQ.deleteMany();
+
+  const faqs = await parseFaqFromPage();
 
   if (faqs.length) {
     await FAQ.insertMany(faqs);

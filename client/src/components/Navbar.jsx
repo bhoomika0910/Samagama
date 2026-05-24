@@ -9,10 +9,13 @@ export default function Navbar() {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [unreadOnly, setUnreadOnly] = useState(false);
 
-  const loadNotifications = async () => {
+  const loadNotifications = async (filterUnread = unreadOnly) => {
     try {
-      const { data } = await api.get('/notifications');
+      const { data } = await api.get('/notifications', {
+        params: filterUnread ? { unread: true } : undefined
+      });
       setNotifications(data.notifications || []);
       setUnreadCount(data.unreadCount || 0);
     } catch {
@@ -25,7 +28,7 @@ export default function Navbar() {
     loadNotifications();
     const interval = setInterval(loadNotifications, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [unreadOnly]);
 
   const handleLogout = async () => {
     await logout();
@@ -69,7 +72,10 @@ export default function Navbar() {
               <div className="absolute right-0 top-12 w-80 rounded-3xl border border-slate-200 bg-white p-3 shadow-soft">
                 <div className="flex items-center justify-between px-2 pb-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                   <span>Notifications</span>
-                  <button onClick={markAllRead} className="text-flame">Mark all read</button>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setUnreadOnly((value) => !value)} className="text-slate-500">{unreadOnly ? 'All' : 'Unread'}</button>
+                    <button onClick={markAllRead} className="text-flame">Mark all read</button>
+                  </div>
                 </div>
                 <div className="max-h-80 space-y-2 overflow-y-auto">
                   {notifications.length ? notifications.map((notification) => (

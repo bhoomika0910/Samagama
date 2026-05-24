@@ -7,6 +7,8 @@ export default function AdminPage() {
   const [faqs, setFaqs] = useState([]);
   const [issues, setIssues] = useState([]);
   const [statusDrafts, setStatusDrafts] = useState({});
+  const [announcement, setAnnouncement] = useState('');
+  const [announcementLink, setAnnouncementLink] = useState('/home');
 
   const load = async () => {
     const [usersRes, faqsRes, issuesRes] = await Promise.all([
@@ -32,6 +34,22 @@ export default function AdminPage() {
     load();
   };
 
+  const sendAnnouncement = async () => {
+    if (!announcement.trim()) {
+      toast.error('Please enter an announcement message');
+      return;
+    }
+
+    const { data } = await api.post('/admin/announcements', {
+      message: announcement,
+      link: announcementLink || '/home'
+    });
+
+    toast.success(`Announcement sent to ${data.notifiedUsers} users`);
+    setAnnouncement('');
+    setAnnouncementLink('/home');
+  };
+
   return (
     <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <h1 className="text-3xl font-black text-ink">Admin Panel</h1>
@@ -40,6 +58,25 @@ export default function AdminPage() {
         <div className="rounded-3xl bg-white p-5 shadow-soft"><h2 className="font-bold text-ink">FAQs</h2><p className="mt-2 text-3xl font-black">{faqs.length}</p></div>
         <div className="rounded-3xl bg-white p-5 shadow-soft"><h2 className="font-bold text-ink">Escalations</h2><p className="mt-2 text-3xl font-black">{issues.length}</p></div>
       </section>
+      <section className="mt-8 rounded-3xl bg-white p-5 shadow-soft">
+        <h2 className="font-bold text-ink">Broadcast announcement</h2>
+        <div className="mt-4 grid gap-3">
+          <textarea
+            value={announcement}
+            onChange={(event) => setAnnouncement(event.target.value)}
+            placeholder="Write the announcement users should receive"
+            className="min-h-24 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-cyan-400"
+          />
+          <input
+            value={announcementLink}
+            onChange={(event) => setAnnouncementLink(event.target.value)}
+            placeholder="Link to open when user clicks notification"
+            className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-cyan-400"
+          />
+          <button onClick={sendAnnouncement} className="w-fit rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white">Send announcement</button>
+        </div>
+      </section>
+
       <section className="mt-8 rounded-3xl bg-white p-5 shadow-soft">
         <h2 className="font-bold text-ink">Registered users</h2>
         <div className="mt-4 overflow-x-auto text-sm">

@@ -1,17 +1,41 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../api/axios.js';
 import FAQCard from '../components/FAQCard.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 
-const categories = ['All', 'Academics', 'Hostel', 'Fees', 'Placements', 'Tech/ERP', 'Events'];
+const categories = [
+  { label: 'All', value: 'all' },
+  { label: 'General', value: 'general' },
+  { label: 'Timing', value: 'timing' },
+  { label: 'NOC', value: 'noc' },
+  { label: 'Selection', value: 'selection' },
+  { label: 'Work', value: 'work' },
+  { label: 'Certificate', value: 'certificate' },
+  { label: 'Rosetta', value: 'rosetta' },
+  { label: 'Vibe', value: 'vibe' },
+  { label: 'Team', value: 'team' }
+];
+
+const parseHashRef = (hashValue = '') => {
+  const value = hashValue.replace('#', '').replace(/^§/, '').trim();
+  if (!value) return null;
+  if (/^\d+\.\d+$/.test(value)) return { subsection: value };
+  if (/^\d+$/.test(value)) return { section: Number(value) };
+  return null;
+};
 
 export default function HomePage() {
+  const { user } = useAuth();
+  const location = useLocation();
   const [faqs, setFaqs] = useState([]);
-  const [activeCategory, setActiveCategory] = useState('All');
+  const [activeCategory, setActiveCategory] = useState('all');
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
-  const [openIndex, setOpenIndex] = useState(0);
+  const [openIndex, setOpenIndex] = useState(-1);
   const [openAll, setOpenAll] = useState(false);
+  const [highlightedSubsection, setHighlightedSubsection] = useState('');
 
   const versionTag = useMemo(() => `v1.0.0 · ${new Date().toISOString().slice(0, 10)}`, []);
 
@@ -23,14 +47,20 @@ export default function HomePage() {
   useEffect(() => {
     const loadFaqs = async () => {
       const params = {};
-      if (activeCategory !== 'All') params.category = activeCategory;
+      if (activeCategory !== 'all') params.category = activeCategory;
       if (search.trim()) params.search = search;
+
+      const hashRef = parseHashRef(location.hash);
+      if (hashRef?.section) {
+        params.section = hashRef.section;
+      }
+
       const { data } = await api.get('/faqs', { params });
       setFaqs(data.faqs);
     };
 
     loadFaqs();
-  }, [activeCategory, search]);
+  }, [activeCategory, search, location.hash]);
 
   const sendFeedback = async (faq, helpful) => {
     try {
@@ -47,8 +77,27 @@ export default function HomePage() {
 
   useEffect(() => {
     setOpenAll(false);
-    setOpenIndex(0);
+    setOpenIndex(-1);
+    setHighlightedSubsection('');
   }, [activeCategory, search]);
+
+  useEffect(() => {
+    if (!faqs.length) return;
+    const hashRef = parseHashRef(location.hash);
+    if (!hashRef) return;
+
+    const matchIndex = faqs.findIndex((faq) => {
+      if (hashRef.subsection) return faq.subsection === hashRef.subsection;
+      if (hashRef.section) return faq.section === hashRef.section;
+      return false;
+    });
+
+    if (matchIndex >= 0) {
+      setOpenAll(false);
+      setOpenIndex(matchIndex);
+      setHighlightedSubsection(faqs[matchIndex].subsection);
+    }
+  }, [faqs, location.hash]);
 
   return (
     <main className="min-h-screen bg-[#0a0a0a] px-4 py-6 text-white">
@@ -68,11 +117,17 @@ export default function HomePage() {
               Welcome. This page covers the questions we hear most often. If something here is unclear, log in to your dashboard and ask Yaksha.
             </p>
 
+            {!user ? (
+              <div className="mt-5 text-center text-sm text-cyan-200/80">
+                Need account tools? <Link to="/" className="underline decoration-cyan-200/60 underline-offset-4">Sign in here</Link>
+              </div>
+            ) : null}
+
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm">
               <button type="button" onClick={() => { setOpenAll(true); setOpenIndex(-1); }} className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-white/80">
                 Expand all
               </button>
-              <button type="button" onClick={() => { setOpenAll(false); setOpenIndex(0); }} className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-white/80">
+              <button type="button" onClick={() => { setOpenAll(false); setOpenIndex(-1); }} className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-white/80">
                 Collapse all
               </button>
             </div>
@@ -82,11 +137,11 @@ export default function HomePage() {
             <div className="mt-4 flex flex-wrap gap-2">
               {categories.map((category) => (
                 <button
-                  key={category}
-                  onClick={() => setActiveCategory(category)}
-                  className={`rounded-full px-4 py-2 text-sm font-medium ${activeCategory === category ? 'bg-white text-black' : 'bg-white/5 text-white/70'}`}
+                  key={category.value}
+                  onClick={() => setActiveCategory(category.value)}
+                  className={`rounded-full px-4 py-2 text-sm font-medium ${activeCategory === category.value ? 'bg-white text-black' : 'bg-white/5 text-white/70'}`}
                 >
-                  {category}
+                  {category.label}
                 </button>
               ))}
             </div>
@@ -101,6 +156,8 @@ export default function HomePage() {
               open={openAll || openIndex === index}
               onToggle={() => setOpenIndex(openIndex === index ? -1 : index)}
               onFeedback={(helpful) => sendFeedback(faq, helpful)}
+              highlighted={highlightedSubsection === faq.subsection}
+              searchTerm={search.trim()}
             />
           ))}
         </section>

@@ -2,19 +2,22 @@ import asyncHandler from 'express-async-handler';
 import FAQ from '../models/FAQ.js';
 
 export const getFaqs = asyncHandler(async (req, res) => {
-  const { category, search } = req.query;
+  const { category, search, section } = req.query;
   const query = {};
 
-  if (category) query.category = category;
+  if (category) query.category = String(category).toLowerCase();
+  if (section) query.section = Number(section);
   if (search) {
     query.$or = [
       { question: { $regex: search, $options: 'i' } },
       { answer: { $regex: search, $options: 'i' } },
-      { tags: { $regex: search, $options: 'i' } }
+      { tags: { $regex: search, $options: 'i' } },
+      { sectionTitle: { $regex: search, $options: 'i' } },
+      { subsection: { $regex: search, $options: 'i' } }
     ];
   }
 
-  const faqs = await FAQ.find(query).sort({ createdAt: -1 });
+  const faqs = await FAQ.find(query).sort({ section: 1, subsection: 1 });
   res.json({ faqs });
 });
 

@@ -22,6 +22,7 @@ export default function App() {
       {user && !needsPasswordChange ? <Navbar /> : null}
       <Routes>
         <Route path="/" element={!user ? <LoginPage /> : <Navigate to="/home" replace />} />
+        <Route path="/faq" element={<HomePage />} />
         <Route path="/reset-password" element={<PasswordResetPage />} />
         <Route
           path="/set-password"

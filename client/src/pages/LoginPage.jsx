@@ -87,7 +87,20 @@ export default function LoginPage() {
 
             <div className="mt-8 grid gap-4 md:grid-cols-3">
               {infoCards.map((card) => (
-                <button key={card.title} type="button" onClick={card.title === 'Ask Yaksha-mini' ? openChat : undefined} className={`group rounded-[1.5rem] border border-white/10 bg-gradient-to-br ${card.accent} p-5 text-left transition hover:-translate-y-1 hover:border-white/20`}>
+                <button
+                  key={card.title}
+                  type="button"
+                  onClick={() => {
+                    if (card.title === 'Ask Yaksha-mini') {
+                      openChat();
+                      return;
+                    }
+                    if (card.title === 'FAQ') {
+                      navigate('/faq');
+                    }
+                  }}
+                  className={`group rounded-[1.5rem] border border-white/10 bg-gradient-to-br ${card.accent} p-5 text-left transition hover:-translate-y-1 hover:border-white/20`}
+                >
                   <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/90 text-2xl font-black text-slate-900 shadow-lg shadow-black/20">{card.icon}</div>
                   <h2 className="text-2xl font-black text-white">{card.title}</h2>
                   <p className="mt-4 min-h-24 text-sm leading-6 text-white/75">{card.description}</p>
