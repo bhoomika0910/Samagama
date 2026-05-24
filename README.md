@@ -12,9 +12,33 @@ A MERN-stack student help portal with cookie-based JWT auth, FAQ search, a keywo
 
 ## Run locally
 
-1. Copy `.env.example` to `.env` and fill in your values.
+1. Copy `.env.example` to `.env` in the repo root and fill in your MongoDB, JWT, and email values.
 2. Install dependencies from the repo root.
-3. Start both apps with `npm run dev`.
+3. Start both apps with the root dev script.
+
+```bash
+npm install
+npm run dev
+```
+
+If you want to start them separately:
+
+```bash
+npm run dev --workspace server
+npm run dev --workspace client
+```
+
+The client runs on `http://localhost:5173` and the server runs on `http://localhost:5000`.
+
+## Git push flow
+
+Use this when you want to add a new commit and push it to GitHub:
+
+```bash
+git add .
+git commit -m "Your human commit message"
+git push
+```
 
 ## Notes
 
